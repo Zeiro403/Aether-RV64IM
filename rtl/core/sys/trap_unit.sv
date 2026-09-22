@@ -85,6 +85,7 @@ module trap_unit (
             trap_en_o     = 1'b1;
             trap_cause_o  = CAUSE_LOAD_MISALIGNED;
             trap_val_o    = bad_addr_i;            // Save the bad address to mtval
+
             
             trap_flush_o  = 1'b1;
             pc_trap_val_o = mtvec_i;

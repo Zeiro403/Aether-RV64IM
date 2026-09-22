@@ -3,8 +3,10 @@ package riscv_pkg;
     // ------------------------------------
     // 1. Basic Parameters
     // ------------------------------------
-    localparam int XLEN = 64;   // Data width
-    localparam int ILEN = 32;   // Instruction width
+    /* verilator lint_off UNUSEDPARAM */
+    localparam int XLEN = 64;
+    localparam int ILEN = 32;
+    /* verilator lint_on UNUSEDPARAM */
 
     // ------------------------------------
     // 2. Opcodes (RV64I Base)
