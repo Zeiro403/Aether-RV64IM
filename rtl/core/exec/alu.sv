@@ -1,5 +1,5 @@
 module alu 
-    import riscv_pkg::*;
+import riscv_pkg::*;
 (
     input  alu_op_t     alu_op_i,
     input  logic [63:0] op_a_i,

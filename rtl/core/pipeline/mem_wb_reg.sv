@@ -1,65 +1,89 @@
 module mem_wb_reg (
-    input  logic        clk,
-    input  logic        rst_n,
+    input  logic clk,
+    input  logic rst_n,
 
-    input  logic        stall_i,
+    // ============================================================
+    // Pipeline Control
+    // ============================================================
 
-    // Inputs from MEM Stage (Trace)
-    input  logic [63:0] pc_i,        
-    input  logic [31:0] instr_i,     
+    input  logic stall_i,
 
-    // Outputs to WB Stage (Trace)
-    output logic [63:0] pc_o,       
-    output logic [31:0] instr_o,   
+    // ============================================================
+    // MEM Stage Input
+    // ============================================================
 
-    // Inputs from MEM Stage (Datapath Results)
-    input  logic [63:0] alu_result_i,
-    input  logic [63:0] mem_data_i,
+    input  logic        valid_i,
 
-    // Outputs to WB Stage (Datapath Results)
-    output logic [63:0] alu_result_o,
-    output logic [63:0] mem_data_o,
+    `ifndef SYNTHESIS
+        input  logic [63:0] pc_i,
+        input  logic [31:0] instr_i,
+    `endif
 
-    // Inputs from MEM Stage (Writeback Control)
+    // Final architectural result produced by MEM.
+    input  logic [63:0] result_i,
+
     input  logic [4:0]  rd_addr_i,
     input  logic        reg_write_i,
-    input  logic        mem_to_reg_i,
 
-    // Outputs to WB Stage (Writeback Control)
+    // ============================================================
+    // WB Stage Output
+    // ============================================================
+
+    output logic        valid_o,
+
+    `ifndef SYNTHESIS
+        output logic [63:0] pc_o,
+        output logic [31:0] instr_o,
+    `endif
+
+    output logic [63:0] result_o,
+
     output logic [4:0]  rd_addr_o,
-    output logic        reg_write_o,
-    output logic        mem_to_reg_o
+    output logic        reg_write_o
 );
+
+    // ============================================================
+    // MEM -> WB Pipeline Register
+    // ============================================================
+
     always_ff @(posedge clk or negedge rst_n) begin
+
+        // --------------------------------------------------------
+        // Reset
+        // --------------------------------------------------------
+
         if (!rst_n) begin
-            // Trace
-            pc_o         <= 64'b0;           
-            instr_o      <= 32'h0000_0013;   
 
-            // Datapath
-            alu_result_o <= 64'b0;
-            mem_data_o   <= 64'b0;
+            valid_o <= 1'b0;
 
-            // Writeback control
-            rd_addr_o    <= 5'b0;
-            reg_write_o  <= 1'b0;
-            mem_to_reg_o <= 1'b0;
-        
-        end else if (stall_i) begin
-            // No change
-        end else begin
-            // Trace
-            pc_o         <= pc_i;  
-            instr_o      <= instr_i;      
+            `ifndef SYNTHESIS
+                pc_o    <= 64'b0;
+                instr_o <= 32'b0;
+            `endif
 
-            // Datapath
-            alu_result_o <= alu_result_i;
-            mem_data_o   <= mem_data_i;
+            result_o <= 64'b0;
 
-            // Writeback control
-            rd_addr_o    <= rd_addr_i;
-            reg_write_o  <= reg_write_i;
-            mem_to_reg_o <= mem_to_reg_i;
+            rd_addr_o   <= 5'b0;
+            reg_write_o <= 1'b0;
+
+
+        // --------------------------------------------------------
+        // Normal Advance
+        // --------------------------------------------------------
+
+        end else if (!stall_i) begin
+
+            valid_o <= valid_i;
+
+            `ifndef SYNTHESIS
+                pc_o    <= pc_i;
+                instr_o <= instr_i;
+            `endif
+
+            result_o <= result_i;
+
+            rd_addr_o   <= rd_addr_i;
+            reg_write_o <= reg_write_i;
         end
     end
 
