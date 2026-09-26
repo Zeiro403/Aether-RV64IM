@@ -1,0 +1,96 @@
+# =============================================================================
+# Aether RV64IM
+# Generic synthesis baseline
+# =============================================================================
+
+plugin -i slang
+
+
+# -----------------------------------------------------------------------------
+# Read synthesizable RTL
+# -----------------------------------------------------------------------------
+#
+# SYNTHESIS removes simulation-only blocks such as the tracer.
+#
+# Keep this list explicit. Synthesis should not accidentally pull in DV or
+# simulation components because somebody added a new file to a directory.
+# -----------------------------------------------------------------------------
+
+read_slang \
+    --std 1800-2017 \
+    --single-unit \
+    --top core_top \
+    -DSYNTHESIS \
+    -I rtl/include \
+    rtl/include/riscv_pkg.sv \
+    rtl/core/fetch/fetch.sv \
+    rtl/core/decode/decoder.sv \
+    rtl/core/decode/imm_gen.sv \
+    rtl/core/mem/regfile.sv \
+    rtl/core/pipeline/if_id_reg.sv \
+    rtl/core/pipeline/id_ex_reg.sv \
+    rtl/core/pipeline/ex_mem_reg.sv \
+    rtl/core/pipeline/mem_wb_reg.sv \
+    rtl/core/pipeline/hazard_unit.sv \
+    rtl/core/exec/alu.sv \
+    rtl/core/exec/branch_comp.sv \
+    rtl/core/exec/muldiv.sv \
+    rtl/core/sys/trap_unit.sv \
+    rtl/core/sys/csr_regfile.sv \
+    rtl/core/exec/execute_stage.sv \
+    rtl/core/mem/lsu.sv \
+    rtl/core/core_top.sv \
+    rtl/core/perf/perf_counters.sv 
+
+
+# =============================================================================
+# Elaborate
+# =============================================================================
+
+hierarchy -check -top core_top
+
+
+# =============================================================================
+# Generic synthesis
+# =============================================================================
+
+# Convert processes to muxes / registers.
+proc
+opt
+check
+
+
+# FSM extraction / optimization.
+fsm
+opt
+
+
+# Memory inference / optimization.
+memory
+opt
+
+
+# Generic technology mapping.
+techmap
+opt
+
+
+# =============================================================================
+# Final verification
+# =============================================================================
+
+check
+
+
+# =============================================================================
+# Statistics
+# =============================================================================
+
+stat
+
+
+# =============================================================================
+# Generic synthesized netlist
+# =============================================================================
+
+write_verilog -noattr syn/yosys/aether_generic.v

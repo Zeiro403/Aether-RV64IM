@@ -1,10 +1,31 @@
 module soc_top (
     input  logic clk,
     input  logic rst_n,
-    
+
+    // =========================================================
     // Hardware Testbench Hooks
-    output logic sim_exit_o,  // Goes HIGH when CPU writes to 0xF0000000
-    output logic sim_pass_o   // Goes HIGH when CPU writes a '1' (Pass)
+    // =========================================================
+
+    output logic sim_exit_o,
+    output logic sim_pass_o,
+
+    // =========================================================
+    // Performance Monitoring
+    // =========================================================
+
+    output logic [63:0] perf_cycles_o,
+    output logic [63:0] perf_instructions_o,
+
+    output logic [63:0] perf_branches_o,
+    output logic [63:0] perf_branches_taken_o,
+    output logic [63:0] perf_redirects_o,
+
+    output logic [63:0] perf_loads_o,
+    output logic [63:0] perf_stores_o,
+    output logic [63:0] perf_muldiv_o,
+
+    output logic [63:0] perf_ex_stall_cycles_o,
+    output logic [63:0] perf_mem_stall_cycles_o
 );
 
     // =========================================================
@@ -87,7 +108,21 @@ module soc_top (
         .axi_d_wready   (axi_d_wready),
         .axi_d_bresp    (axi_d_bresp),
         .axi_d_bvalid   (axi_d_bvalid),
-        .axi_d_bready   (axi_d_bready)
+        .axi_d_bready   (axi_d_bready),
+        // Performance
+        .perf_cycles_o           (perf_cycles_o),
+        .perf_instructions_o     (perf_instructions_o),
+
+        .perf_branches_o         (perf_branches_o),
+        .perf_branches_taken_o   (perf_branches_taken_o),
+        .perf_redirects_o        (perf_redirects_o),
+
+        .perf_loads_o            (perf_loads_o),
+        .perf_stores_o           (perf_stores_o),
+        .perf_muldiv_o           (perf_muldiv_o),
+
+        .perf_ex_stall_cycles_o  (perf_ex_stall_cycles_o),
+        .perf_mem_stall_cycles_o (perf_mem_stall_cycles_o)
     );
 
     // =========================================================

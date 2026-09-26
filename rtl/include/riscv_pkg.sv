@@ -3,8 +3,10 @@ package riscv_pkg;
     // ------------------------------------
     // 1. Basic Parameters
     // ------------------------------------
-    localparam int XLEN = 64;   // Data width
-    localparam int ILEN = 32;   // Instruction width
+    /* verilator lint_off UNUSEDPARAM */
+    localparam int XLEN = 64;
+    localparam int ILEN = 32;
+    /* verilator lint_on UNUSEDPARAM */
 
     // ------------------------------------
     // 2. Opcodes (RV64I Base)
@@ -57,14 +59,14 @@ package riscv_pkg;
         LSU_SD      // Store Doubleword
     } lsu_op_t;
 
-    typedef enum logic [2:0] {
-        BRANCH_NONE = 3'b010, // Default (No Branch) - mapped to safe value
-        BRANCH_BEQ  = 3'b000, // Equal
-        BRANCH_BNE  = 3'b001, // Not Equal
-        BRANCH_BLT  = 3'b100, // Less Than (Signed)
-        BRANCH_BGE  = 3'b101, // Greater/Equal (Signed)
-        BRANCH_BLTU = 3'b110, // Less Than (Unsigned)
-        BRANCH_BGEU = 3'b111  // Greater/Equal (Unsigned)
+    typedef enum logic [3:0] {
+        BRANCH_NONE ,
+        BRANCH_BEQ  ,
+        BRANCH_BNE  ,
+        BRANCH_BLT  ,
+        BRANCH_BGE  ,
+        BRANCH_BLTU ,
+        BRANCH_BGEU
     } branch_op_t;
 
     typedef enum logic [3:0] { // 4 bits to be safe
@@ -114,5 +116,76 @@ package riscv_pkg;
         CSR_RSI  = 3'b110, // Immediate Read/Set
         CSR_RCI  = 3'b111  // Immediate Read/Clear
     } csr_op_t;
+
+    typedef enum logic [2:0] {
+        FU_NONE,
+        FU_ALU,
+        FU_LSU,
+        FU_BRANCH,
+        FU_MULDIV,
+        FU_CSR
+    } fu_t;
+
+    typedef enum logic [1:0] {
+        OP_A_RS1,
+        OP_A_PC,
+        OP_A_ZERO
+    } op_a_sel_t;
+
+    typedef enum logic [1:0] {
+        OP_B_RS2,
+        OP_B_IMM,
+        OP_B_FOUR
+    } op_b_sel_t;
+
+    typedef enum logic [1:0] {
+        CTRL_NONE,
+        CTRL_BRANCH,
+        CTRL_JAL,
+        CTRL_JALR
+    } ctrl_flow_t;
+
+    typedef enum logic [1:0] {
+    FWD_REG,
+    FWD_MEM,
+    FWD_WB
+} forward_sel_t;
+
+function automatic logic lsu_is_load(lsu_op_t op);
+    case (op)
+        LSU_LB,
+        LSU_LH,
+        LSU_LW,
+        LSU_LD,
+        LSU_LBU,
+        LSU_LHU,
+        LSU_LWU: lsu_is_load = 1'b1;
+
+        default: lsu_is_load = 1'b0;
+    endcase
+endfunction
+
+
+function automatic logic lsu_is_store(lsu_op_t op);
+    case (op)
+        LSU_SB,
+        LSU_SH,
+        LSU_SW,
+        LSU_SD: lsu_is_store = 1'b1;
+
+        default: lsu_is_store = 1'b0;
+    endcase
+endfunction
+
+
+function automatic logic csr_is_imm(csr_op_t op);
+    case (op)
+        CSR_RWI,
+        CSR_RSI,
+        CSR_RCI: csr_is_imm = 1'b1;
+
+        default: csr_is_imm = 1'b0;
+    endcase
+endfunction
 
 endpackage

@@ -1,5 +1,5 @@
-module branch_comp 
-    import riscv_pkg::*;
+module branch_comp
+import riscv_pkg::*; 
 (
     input  branch_op_t  branch_op_i,
     input  logic [63:0] op_a_i,

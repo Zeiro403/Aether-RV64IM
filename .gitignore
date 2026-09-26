@@ -1,27 +1,27 @@
-# ==========================================
-# RISC-V Core Project .gitignore
-# ==========================================
-
-# 1. Hardware Simulation Artifacts (Verilator)
+# Verilator
 obj_dir/
 *.vcd
 
-# 2. Software Build Artifacts (GCC / Objcopy)
-*.o
-*.elf
-*.bin
-*.hex
-*.dump
+# Simulation logs
+rtl.log
+spike.log
+regression.log
 
-# Specific output directories and files
-dv/tests/bin/
+# Generated software image
 sw/program.hex
 
-# 3. External Repositories & Submodules
+# Regression build products
+dv/tests/bin/
+
+# Benchmark build products
+dv/benchmarks/bin/
+dv/benchmarks/results/
 dv/riscv-tests-repo/
 
-# 4. OS and Editor Temp Files (Standard)
-.DS_Store
-*.swp
-*~
-.vscode/
+# Synthesis generated products
+syn/reports/
+syn/yosys/aether_generic.v
+
+# Python
+__pycache__/
+*.pyc
