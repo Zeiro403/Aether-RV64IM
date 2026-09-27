@@ -25,3 +25,7 @@ syn/yosys/aether_generic.v
 # Python
 __pycache__/
 *.pyc
+# Large physical-design deliverables
+artifacts/sky130hd/*.gds
+artifacts/sky130hd/*.def
+artifacts/sky130hd/*.spef

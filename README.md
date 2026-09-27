@@ -1,108 +1,297 @@
-# Aether-RV64IM
-**A High-Performance 5-Stage Pipelined RISC-V Core**
+# Aether RV64IM
 
-![ISA](https://img.shields.io/badge/ISA-RV64IM-blue)
-![Bus](https://img.shields.io/badge/Bus-AXI4--Lite-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+A synthesizable 64-bit RISC-V processor core implementing the RV64IM ISA in SystemVerilog.
 
-Aether-RV64IM is a synthesizable 64-bit RISC-V processor core written in SystemVerilog. It has a classic 5-stage in-order pipeline. It features full data forwarding for structural hazard resolution and a dual-port AXI4-Lite interface for seamless SoC integration. The core is rigorously verified using a **Synchronous Co-Simulation** strategy against the Berkeley Spike Golden Model and through **Official RISC-V ISA test suite**.
+Aether uses a 5-stage in-order pipeline, forwarding and hazard control, iterative integer multiplication/division, separate instruction and data interfaces, machine-mode CSR/trap support, and hardware performance counters.
 
-## 🏗 Microarchitecture
+The core has been verified with directed tests, RISC-V ISA tests, Spike differential testing, and stress tests. It has also been synthesized and physically implemented using the Sky130HD standard-cell library with OpenROAD-flow-scripts.
 
-![Aether-RV64IM Architecture](./images/aether_architecture.png)
+## Architecture
 
-* **Pipeline:** 5-Stage (IF, ID, EX, MEM, WB).
-* **ISA Support:** RV64I (64 Bit Base Integer) + M (Hardware Multiply/Divide).
-* **Hazard Management:** 
-    * **Data Forwarding:** `MEM -> EX` and `WB -> EX` bypass paths to minimize stalls.
-  * **Interlocking:** Automatic hardware stall/flush logic for Load-Use hazards and branch mispredictions.
-* **Bus Interface:** Independent Instruction and Data AXI4-Lite Managers (Harvard Architecture).
-* **Reset Vector:** `0x80000000`.
+[Architecture](docs/architecture.md)
 
----
+### Processor
 
-## 📂 Project Structure
+- ISA: RV64IM
+- Pipeline: 5-stage in-order
+  - IF — Instruction Fetch
+  - ID — Decode / Register Read
+  - EX — Execute
+  - MEM — Memory Access
+  - WB — Writeback
+- Reset vector: `0x80000000`
+- Separate instruction and data interfaces
+- Machine-mode CSR and trap support
+- Hardware performance counters
+
+### Hazard handling
+
+The pipeline implements:
+
+- MEM → EX forwarding
+- WB → EX forwarding
+- load-use interlocks
+- execution-stage stalls
+- memory-stage stalls
+- pipeline flushing on redirects
+
+### Integer multiply/divide
+
+The M extension uses multi-cycle iterative hardware:
+
+- radix-2 shift-and-add multiplication
+- radix-2 restoring division
+- 64-bit RV64 operations
+- 32-bit RV64 word operations
+- signed and unsigned operations
+- RISC-V divide-by-zero and signed-overflow behavior
+
+The initial implementation used behavioral `*`, `/`, and `%` operators with counters controlling completion. Although the interface appeared multi-cycle, synthesis inferred large combinational arithmetic networks.
+
+Replacing this with iterative hardware reduced Sky130HD synthesis results from:
+
+| Metric | Initial | Iterative MULDIV |
+|---|---:|---:|
+| Standard cells | 87,490 | 29,231 |
+| Cell area | 802,513 µm² | 295,352 µm² |
+| Full adders | 9,051 | 6 |
+| Half adders | 7,571 | 607 |
+
+Synthesized standard-cell area decreased by approximately 63%.
+
+## Verification
+
+Aether uses several verification levels.
+
+### RTL regression
+
+The regression environment compiles and executes directed C/assembly tests and RISC-V ISA tests using Verilator.
+
+```bash
+make regression
+```
+
+### Spike differential testing
+
+A retirement tracer records architectural state changes from the RTL.
+
+The differential-testing flow compares retired instructions against Spike, including:
+
+- program counter
+- instruction
+- architectural register updates
+
+Run the Spike regression with:
+
+```bash
+make spike-regression
+```
+
+A single test can be compared with:
+
+```bash
+make spike TEST=<test_name>
+```
+
+### Lint
+
+Simulation-oriented and synthesis-oriented Verilator lint configurations are provided:
+
+```bash
+make lint-all
+```
+
+### Complete verification
+
+```bash
+make verify
+```
+
+### Benchmarks
+
+Small processor benchmarks exercise arithmetic, branches, memory accesses, M-extension operations, and mixed workloads.
+
+```bash
+make benchmarks
+```
+
+Reported metrics include:
+
+- cycles
+- retired instructions
+- CPI
+- branches
+- taken branches
+- execution stall cycles
+- memory stall cycles
+
+More detail is available in [`docs/verification.md`](docs/verification.md).
+
+## Sky130HD Physical Implementation
+
+Aether has been synthesized and physically implemented with OpenROAD-flow-scripts using the Sky130HD standard-cell library.
+
+### Configuration
+
+- Top module: `core_top`
+- Platform: Sky130HD
+- HDL frontend: Slang/Yosys
+- Clock constraint: 20 ns (50 MHz)
+- Initial core utilization: 45%
+- Final slew repair margin: 20%
+- Final capacitance repair margin: 20%
+
+Physical-design configuration:
+
 ```text
-├── dv/                # Design Verification
-│   ├── tb/            # Verilator C++ Testbench (sim_main.cpp)
-│   └── tests/         # Unit tests and Spike comparison Python scripts
-│       ├── bin/       # Integrated official RISC-V ISA test suite
-│       ├── env/       # Header File for official RISC-V ISA test suite
-│       ├── scripts/   # Regression and Spike comparison Python scripts
-│       └── src/       # C language tests + RV64I & RV64M tests
-├── images/            # Architecture diagrams and waveforms
-├── rtl/               # Synthesizable SystemVerilog Source
-│   ├── core/          # CPU Core Logic
-│   ├── include/       # Global Packages & Parameter Definitions
-│   └── soc_testing/   # AXI RAM & SoC Wrappers for simulation
-├── sw/                # Linker scripts and boot code (crt0.s)
-├── Dockerfile         # Portable toolchain environment
-└── Makefile           # Automated build and test targets
-
+syn/sky130hd/config.mk
+syn/sky130hd/constraint.sdc
 ```
 
----
+### Final results
 
-## ⚖️ Verification Strategy
+| Metric | Result |
+|---|---:|
+| Synthesized standard cells | 29,231 |
+| Synthesized cell area | 295,352 µm² |
+| Die dimensions | ~812 × 812 µm |
+| Clock constraint | 20 ns / 50 MHz |
+| Final setup violations | 0 |
+| Final hold violations | 0 |
+| Max slew violations | 0 |
+| Max capacitance violations | 0 |
+| Max fanout violations | 0 |
+| Timing-based Fmax estimate | 74.18 MHz |
+| Setup clock skew | ~0.11 ns |
+| Antenna violations | 0 |
+| KLayout DRC | 0 violations |
+| LVS | PASS |
 
-This core uses a dual-layered verification approach to ensure 100% architectural compliance:
+The reported Fmax is a timing estimate for the implemented design and analyzed library corner. It is not a measured silicon operating frequency.
 
-### 1. Regression Suite
+### Physical-design flow
 
-A comprehensive suite of 74 architectural tests (integrating the official `riscv-tests for I & M extensions`) is executed via Verilator.
+```text
+SystemVerilog RTL
+       ↓
+Elaboration / Synthesis
+       ↓
+Sky130HD Technology Mapping
+       ↓
+Floorplanning
+       ↓
+Placement
+       ↓
+Static Timing Analysis
+       ↓
+Clock Tree Synthesis
+       ↓
+Routing
+       ↓
+Parasitic Extraction
+       ↓
+Post-route STA
+       ↓
+DRC / LVS
+       ↓
+GDS
+```
 
-### 2. Spike Co-Simulation
+The final flow generated:
 
-For deep architectural validation, the core is compared line-by-line against **Spike** (the official RISC-V ISA simulator).
+- GDS
+- DEF
+- SPEF
+- SDC
+- OpenDB database
+- gate-level Verilog netlist
 
-* **Tracer:** A hardware monitor captures every retired instruction.
-* **Synchronization:** A custom Python script synchronizes the RTL trace with the Spike trace, filtering out pipeline artifacts to ensure Program Counters and Register file updates match flawlessly.
+Detailed implementation results and retained reports are available in:
 
----
+- [`docs/physical_design/sky130hd.md`](docs/physical_design/sky130hd.md)
+- [`docs/physical_design/results.md`](docs/physical_design/results.md)
 
-## Quick Start (Docker)
+## Project Structure
 
-The easiest way to simulate the core without installing EDA tools locally is via Docker.
+```text
+.
+├── docs/
+│   ├── physical_design/       # Sky130HD results, reports and layout images
+│   └── ...                    # Architecture and verification documentation
+│
+├── dv/
+│   ├── benchmarks/            # Performance benchmarks
+│   ├── riscv-tests-repo/      # riscv-tests submodule
+│   ├── rtl/                   # Verification-only RTL
+│   ├── tb/                    # Verilator C++ testbench
+│   └── tests/                 # Regression and differential tests
+│
+├── rtl/
+│   ├── bus/                   # Bus wrapper
+│   ├── core/
+│   │   ├── decode/
+│   │   ├── exec/
+│   │   ├── fetch/
+│   │   ├── mem/
+│   │   ├── perf/
+│   │   ├── pipeline/
+│   │   └── sys/
+│   └── include/
+│
+├── sim/
+│   └── soc/                   # Simulation-only SoC and RAM
+│
+├── sw/                        # Startup code and linker script
+│
+├── syn/
+│   ├── sky130hd/              # ORFS configuration and SDC constraints
+│   └── yosys/                 # Generic synthesis flow
+│
+├── Dockerfile
+└── Makefile
+```
 
-**1. Clone the repository (with submodules):**
+## Local Tool Requirements
+
+The RTL verification flow uses:
+
+- Verilator
+- RISC-V GNU toolchain
+- Spike
+- Python 3
+- Yosys
+
+Physical implementation uses OpenROAD-flow-scripts and the Sky130HD platform.
+
+Tool versions used for a particular implementation should be recorded with the corresponding results rather than assumed from this README.
+
+## Useful Make Targets
 
 ```bash
-git clone --recursive [https://github.com/hardly-alive/rv64.git](https://github.com/hardly-alive/rv64.git)
-cd YOUR_REPO
-
+make lint-all
+make regression
+make spike-regression
+make verify
+make benchmarks
+make synth
 ```
 
-**2. Build the environment:**
+Use:
 
 ```bash
-docker build -t riscv-lab .
-
+make toolcheck
 ```
 
-**3. Run Verification:**
+to inspect the locally configured Yosys and Verilator versions.
 
-```bash
-# Run the full 74-test regression
-docker run --rm -v $(pwd):/work riscv-lab make regression
+## Known Limitations
 
-# Run a specific Spike Co-Simulation
-docker run --rm -v $(pwd):/work riscv-lab make spike TEST=alu_test
-
-```
-
----
-
-## Prerequisites (Local Install)
-
-If running without Docker, ensure the following are in your `$PATH`:
-
-* **Verilator:** `v5.002+`
-* **RISC-V GNU Toolchain:** `riscv64-unknown-elf-gcc`
-* **Spike:** `riscv-isa-sim`
-* **Python:** `3.8+`
-
----
+- Aether currently implements RV64IM rather than the complete RISC-V privileged architecture or additional ISA extensions.
+- Physical implementation was performed as a standalone core, not a complete pad-ring/package-level SoC.
+- The final power figure from OpenROAD is a tool-generated estimate without workload-derived switching activity.
+- ORFS logical equivalence checking was not completed because the bundled Kepler Formal executable terminated with an illegal-instruction error in the WSL/Docker environment.
+- The reported timing-based Fmax is not a silicon measurement.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+See [`LICENSE`](LICENSE).

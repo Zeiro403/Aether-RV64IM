@@ -1,0 +1,3 @@
+Total elapsed: 1207.510s  Memory: 1089.00M
+INFO : Congratulations! Netlists match.
+Elapsed time: 19:38.11[h:]min:sec. CPU time: user 1208.66 sys 1.63 (102%). Peak memory: 1153216KB.
